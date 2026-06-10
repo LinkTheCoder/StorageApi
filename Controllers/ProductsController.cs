@@ -13,11 +13,16 @@ public class ProductsController : ControllerBase
         _context = context;
     }
 
-    // GET: api/Product
+    // GET: api/products?category=KategoriNamn
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProduct()
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProduct([FromQuery] string? category = null)
     {
-        return await _context.Product
+        var query = _context.Product.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(category))
+            query = query.Where(p => p.Category == category);
+
+        return await query
             .Select(p => new ProductDto
             {
                 Id = p.Id,
@@ -26,6 +31,22 @@ public class ProductsController : ControllerBase
                 Count = p.Count
             })
             .ToListAsync();
+    }
+
+    // GET: api/products/stats
+    [HttpGet("stats")]
+    public async Task<ActionResult<ProductStatsDto>> GetStats()
+    {
+        var products = await _context.Product.ToListAsync();
+
+        var stats = new ProductStatsDto
+        {
+            TotalProducts = products.Count,
+            TotalInventoryValue = products.Sum(p => (long)p.Price * p.Count),
+            AveragePrice = products.Count > 0 ? (decimal)products.Average(p => p.Price) : 0
+        };
+
+        return Ok(stats);
     }
 
     // GET: api/Product/5
